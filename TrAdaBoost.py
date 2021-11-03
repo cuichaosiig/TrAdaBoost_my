@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.metrics import f1_score, roc_auc_score
 
 class Tradaboost(object):##针对二分类设计的tradaboost
     def __init__(self,N=None,base_estimator=None,threshold=None,score=roc_auc_score):    
@@ -80,7 +81,7 @@ class Tradaboost(object):##针对二分类设计的tradaboost
                 weights[j] = weights[j] * np.power(bata,np.abs(result_label[j, i] - source_label[j]))
                 
             tp=self.score(target_label,y_target_pred)
-            print('The '+str(i)+' rounds score is '+str(tp))
+            print('The '+str(i)+' rounds score is '+str(tp),f"Error Rate is {error_rate}")
             if tp > score :      
                 score = tp      
                 best_round = i  
