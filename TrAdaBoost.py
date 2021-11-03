@@ -1,10 +1,12 @@
 import numpy as np
+import pandas as pd
 from sklearn.metrics import f1_score, roc_auc_score
 
 class Tradaboost(object):##针对二分类设计的tradaboost
-    def __init__(self,N=None,base_estimator=None,threshold=None,score=roc_auc_score):    
+    def __init__(self,N=None,base_estimator=None,threshold:float=None,topN:bool = None,score=roc_auc_score):    
         self.N=N
         self.threshold=threshold
+        self.topN = topN
         self.base_estimator=base_estimator
         self.score=score
         self.estimators=[]
@@ -25,6 +27,10 @@ class Tradaboost(object):##针对二分类设计的tradaboost
    
           
     def fit(self,source,target,source_label,target_label,early_stopping_rounds):#注意，输入要转为numpy格式的
+        '''
+        Source: 待迁移数据
+        target: 目标数据
+        '''
         
         source_shape=source.shape[0]
         target_shape=target.shape[0]
@@ -55,14 +61,34 @@ class Tradaboost(object):##针对二分类设计的tradaboost
              
 
             #注意，仅仅计算在目标域上的错误率 ，
-            y_target_pred=self.base_estimator.predict_proba(target)[:,1]#目标域的预测
-            error_rate = self._calculate_error_rate(target_label, (y_target_pred>self.threshold).astype(int),  \
+            if self.threshold is not None or  self.topN is True:
+                y_target_pred=self.base_estimator.predict_proba(target)[:,1]#目标域的预测
+                if self.topN is True:
+                    # 使用topN 进行过滤
+                    N_positive = sum((trans_label>0).astype(int))
+                    print(f"使用topN 作为评价指标--N:{N_positive}")
+                    rank = pd.DataFrame(y_target_pred,columns=['score'])
+                    rank['rank'] = rank.score.rank(ascending=False)
+                    rank['Y'] = 0
+                    rank.loc[rank['rank']<N_positive,'Y'] = 1
+                    error_rate = self._calculate_error_rate(target_label, rank['Y'].values,  \
+                                              weights[source_shape:source_shape + target_shape, :])  
+                    
+                elif self.threshold is not None:
+                    # 使用阈值进行过滤
+                    error_rate = self._calculate_error_rate(target_label, (y_target_pred>self.threshold).astype(int),  \
+                                              weights[source_shape:source_shape + target_shape, :])  
+            else:
+                # 直接使用predict进行处理
+                y_target_pred=self.base_estimator.predict(target)#目标域的预测
+                error_rate = self._calculate_error_rate(target_label, y_target_pred,  \
                                               weights[source_shape:source_shape + target_shape, :])  
             #根据不同的判断阈值来对二分类的标签进行判断，对于不均衡的数据集合很有效，比如100：1的数据集，不设置class_wegiht
             #的情况下需要将正负样本的阈值提高到99%.
             
             # 防止过拟合     
             if error_rate > 0.5:      
+                print (f'Error_rate is {error_rate}, scale it !')
                 error_rate = 0.5      
             if error_rate == 0:      
                 N = i      
@@ -80,6 +106,7 @@ class Tradaboost(object):##针对二分类设计的tradaboost
             for j in range(source_shape):      
                 weights[j] = weights[j] * np.power(bata,np.abs(result_label[j, i] - source_label[j]))
                 
+            # 只在目标域上进行 AUC 的评估
             tp=self.score(target_label,y_target_pred)
             print('The '+str(i)+' rounds score is '+str(tp),f"Error Rate is {error_rate}")
             if tp > score :      
