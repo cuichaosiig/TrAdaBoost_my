@@ -9,6 +9,7 @@ class Tradaboost(object):##针对二分类设计的tradaboost
         self.topN = topN
         self.base_estimator=base_estimator
         self.score=score
+        self.weights = []
         self.estimators=[]
             
     # 权重的标准化，其实差别不大，在前面的例子中也有用到过
@@ -30,6 +31,9 @@ class Tradaboost(object):##针对二分类设计的tradaboost
         '''
         Source: 待迁移数据
         target: 目标数据
+
+        return :
+        更新类中的权重数据
         '''
         
         source_shape=source.shape[0]
@@ -40,6 +44,11 @@ class Tradaboost(object):##针对二分类设计的tradaboost
         weights_target = np.ones([target_shape, 1])/target_shape
         weights = np.concatenate((weights_source, weights_target), axis=0)
         
+        # 输出统计信息:
+        print(f'''Statistic info:
+        Size of the source data : {source_shape}
+        Size of the target data : {target_shape}
+	''')
         # 根据公式初始化参数，具体可见原文
         
         bata = 1 / (1 + np.sqrt(2 * np.log(source_shape / self.N)))    
@@ -120,4 +129,5 @@ class Tradaboost(object):##针对二分类设计的tradaboost
                 break  
         self.best_round=best_round
         self.best_score=score
+        self.weights = weights
 
