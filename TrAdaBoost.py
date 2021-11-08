@@ -10,7 +10,8 @@ class Tradaboost(object):##针对二分类设计的tradaboost
         self.base_estimator=base_estimator
         self.score=score
         self.weights = []
-        self.estimators=[]
+        self.estimators= []
+        self.beta_all = np.zeros([1, self.N])
             
     # 权重的标准化，其实差别不大，在前面的例子中也有用到过
     def _calculate_weights(self,weights):      
@@ -52,7 +53,6 @@ class Tradaboost(object):##针对二分类设计的tradaboost
         # 根据公式初始化参数，具体可见原文
         
         bata = 1 / (1 + np.sqrt(2 * np.log(source_shape / self.N)))    
-        bata_T = np.zeros([1, self.N])
         result_label = np.ones([source_shape+target_shape, self.N])    
 
         trans_data = np.asarray(trans_data, order='C')     #行优先 
@@ -74,7 +74,7 @@ class Tradaboost(object):##针对二分类设计的tradaboost
                 y_target_pred=self.base_estimator.predict_proba(target)[:,1]#目标域的预测
                 if self.topN is True:
                     # 使用topN 进行过滤
-                    N_positive = sum((trans_label>0).astype(int))
+                    N_positive = sum((target_label>0).astype(int))
                     print(f"使用topN 作为评价指标--N:{N_positive}")
                     rank = pd.DataFrame(y_target_pred,columns=['score'])
                     rank['rank'] = rank.score.rank(ascending=False)
@@ -103,12 +103,12 @@ class Tradaboost(object):##针对二分类设计的tradaboost
                 N = i      
                 break       
 
-            bata_T[0, i] = error_rate / (1 - error_rate)      
+            self.beta_all[0, i] = error_rate / (1 - error_rate)      
 
             # 调整目标域样本权重      
             for j in range(target_shape):      
                 weights[source_shape + j] = weights[source_shape + j] * \
-                np.power(bata_T[0, i],(-np.abs(result_label[source_shape + j, i] - target_label[j])))
+                np.power(self.beta_all[0, i],(-np.abs(result_label[source_shape + j, i] - target_label[j])))
 
                 
             # 调整源域样本权重      
@@ -122,12 +122,33 @@ class Tradaboost(object):##针对二分类设计的tradaboost
                 score = tp      
                 best_round = i  
                 flag=0
+                self.best_round=best_round
+                self.best_score=score
+                self.weights = weights
             else:
                 flag+=1
+
             if flag >=early_stopping_rounds:  
                 print('early stop!')
                 break  
-        self.best_round=best_round
-        self.best_score=score
-        self.weights = weights
+    
+        
+    # 预测代码 -- proba 类别
+    def predict_prob(self, x_test):
+        result = np.ones([x_test.shape[0], self.N + 1])
+        predict = []
 
+        i = 0
+        for estimator in self.estimators:
+            # 修改，这里采用proba作为预测器，并使用输出为1的作为结果
+            y_pred = estimator.predict_proba(x_test)[:,1]
+            result[:, i] = y_pred
+            i += 1
+
+        for i in range(x_test.shape[0]):
+            left = np.sum(result[i, int(np.ceil(self.N / 2)): self.N] *
+                         np.log(1 / self.beta_all[0, int(np.ceil(self.N / 2)):self.N]) )
+
+            right = 0.5 * np.sum( np.log(1 / self.beta_all[0, int(np.ceil(self.N / 2)): self.N]) )
+            predict.append([left, right])
+        return predict
