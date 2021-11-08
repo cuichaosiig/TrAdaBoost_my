@@ -46,9 +46,11 @@ class Tradaboost(object):##针对二分类设计的tradaboost
         weights = np.concatenate((weights_source, weights_target), axis=0)
         
         # 输出统计信息:
+        N_positive = sum((target_label>0).astype(int))
         print(f'''Statistic info:
         Size of the source data : {source_shape}
         Size of the target data : {target_shape}
+        Target Npositive:{N_positive}
 	''')
         # 根据公式初始化参数，具体可见原文
         
@@ -74,8 +76,6 @@ class Tradaboost(object):##针对二分类设计的tradaboost
                 y_target_pred=self.base_estimator.predict_proba(target)[:,1]#目标域的预测
                 if self.topN is True:
                     # 使用topN 进行过滤
-                    N_positive = sum((target_label>0).astype(int))
-                    print(f"使用topN 作为评价指标--N:{N_positive}")
                     rank = pd.DataFrame(y_target_pred,columns=['score'])
                     rank['rank'] = rank.score.rank(ascending=False)
                     rank['Y'] = 0
@@ -125,6 +125,7 @@ class Tradaboost(object):##针对二分类设计的tradaboost
                 self.best_round=best_round
                 self.best_score=score
                 self.weights = weights
+                print('Get a valid weight , updating ...')
             else:
                 flag+=1
 
