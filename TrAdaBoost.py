@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import copy
 from sklearn.metrics import f1_score, roc_auc_score
 
 class Tradaboost(object):##针对二分类设计的tradaboost
@@ -8,6 +9,7 @@ class Tradaboost(object):##针对二分类设计的tradaboost
         self.threshold=threshold
         self.topN = topN
         self.base_estimator=base_estimator
+        self.best_estimator=np.nan
         self.score=score
         self.weights = []
         self.estimators= []
@@ -125,6 +127,7 @@ class Tradaboost(object):##针对二分类设计的tradaboost
                 self.best_round=best_round
                 self.best_score=score
                 self.weights = weights
+                self.best_estimator = copy.deepcopy(self.base_estimator)
                 print('Get a valid weight , updating ...')
             else:
                 flag+=1
