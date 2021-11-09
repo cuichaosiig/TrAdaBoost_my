@@ -60,6 +60,9 @@ def transfer_2d_batch(df,x,y,step=0.1,lambda_list=[],x2=[]):
     lambda_list: 初始化的lambda函数列表,
         [有效的转化参数名称，[其他,lambda 函数 string 字符串],iv]
 
+    #
+        优化： 对数据首先进行归一化处理
+    #
     return:
     list of 见 transfer_2d
     -------------------------------
@@ -69,16 +72,26 @@ def transfer_2d_batch(df,x,y,step=0.1,lambda_list=[],x2=[]):
         raise Exception(' x indics must be list which >2')
     if y in x:
         raise Exception ('BAD! LEAKAGE HAPPENDED')
-    
+
     # 没有输入就是自己内部搞
     if len(x2)==0:
         x2 = x
+    # 首先进行归一化操作
+    df_scaled = pd.DataFrame()
+    df_scaled[y] =  df[y]
+    for i in list(set(x)+set(x2)):
+        dmin = df[i].min()
+        dmax = df[i].max()
+        funcstring = f"lambda df: (df['{i}']-{dmin})/({dmax}-{dmin})"
+        lambda_list.append([f"rescale_{i}",[{'trans2d_angle':"angle"},funcstring],-1]) 
+        df_scaled[i] = eval(funcstring)[df] 
+
     transfered = []
     for i in range(len(x)):
         print(f' -- {i}')
         for j in range(len(x2)):
             if x[i] != x2[j] and '--'.join(sorted([x[i],x2[j]])) not in transfered:
-                lambda_list.append(transfer_2d(df[x[i]],df[x2[j]],x[i],x2[j],df[y],step))
+                lambda_list.append(transfer_2d(df_scaled[x[i]],df_scaled[x2[j]],x[i],x2[j],df_scaled[y],step))
                 transfered.append('--'.join(sorted([x[i],x2[j]])))
     return lambda_list 
 
