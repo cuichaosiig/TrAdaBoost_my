@@ -79,7 +79,7 @@ def transfer_2d_batch(df,x,y,step=0.1,lambda_list=[],x2=[]):
     # 首先进行归一化操作
     df_scaled = pd.DataFrame()
     df_scaled[y] =  df[y]
-    for i in list(set(x)+set(x2)):
+    for i in list(set(x)|set(x2)):
         dmin = df[i].min()
         dmax = df[i].max()
         funcstring = f"lambda df: (df['{i}']-{dmin})/({dmax}-{dmin})"
